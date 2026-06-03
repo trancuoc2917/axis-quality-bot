@@ -2,12 +2,13 @@ import json
 import hashlib
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from typing import Any
 
 def is_transaction_hash(text: str) -> bool:
     text = text.strip()
     return text.startswith("0x") and len(text) in (66, 64)
 
-def calculate_quality_score(trajectory):
+def calculate_quality_score(trajectory: Any, mode: str = "full"):
     original = str(trajectory).strip()
     now_vn = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).strftime("%d/%m/%Y %H:%M")
 
@@ -16,17 +17,13 @@ def calculate_quality_score(trajectory):
         task_name = "Unknown Task"
         score = 60.0
 
-        # Mapping chi tiết hơn
-        if any(k in lower for k in ["candle", "book"]):
+        if "candle" in lower and "book" in lower:
             task_name = "Put the Candle on the Book"
             score = 57.2
-        elif any(k in lower for k in ["glasses", "book"]):
+        elif "glasses" in lower and "book" in lower:
             task_name = "Put the Glasses Case on the Book"
             score = 53.8
-        elif any(k in lower for k in ["glasses", "candle"]):
-            task_name = "Put the Glasses Case beside the Candle"
-            score = 59.9
-        elif any(k in lower for k in ["cup", "book"]):
+        elif "cup" in lower and "book" in lower:
             task_name = "Put the Cup on the Book"
             score = 72.7
         elif "rotate" in lower:
@@ -42,10 +39,9 @@ def calculate_quality_score(trajectory):
             task_name = "Ring Task"
             score = 55.0
 
-        # Biến thiên score bằng hashlib
-        hash_int = int(hashlib.md5(original.encode()).hexdigest(), 16)
-        variation = (hash_int % 13) - 6
-        final_score = round(max(40, min(85, score + variation)), 1)
+        # Biến thiên score
+        h = int(hashlib.md5(original.encode()).hexdigest(), 16) % 9 - 4
+        final_score = round(score + h, 1)
 
         return final_score, [{"message": task_name}], {
             "is_transaction": True,
