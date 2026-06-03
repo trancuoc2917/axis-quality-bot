@@ -1,33 +1,33 @@
 import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from typing import Any
 
 def is_transaction_hash(text: str) -> bool:
     text = text.strip()
     return text.startswith("0x") and len(text) in (66, 64)
 
-def calculate_quality_score(trajectory):
+def calculate_quality_score(trajectory: Any, mode: str = "full"):
     original = str(trajectory).strip()
     now_vn = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).strftime("%d/%m/%Y %H:%M")
 
     if is_transaction_hash(original):
         lower = original.lower()
         task_name = "Unknown Task"
-        score = 60.0
+        score = 62.0
 
-        # Mapping mạnh hơn dựa trên hash thực tế Axis
-        if "candle" in lower or "book" in lower:
+        if "candle" in lower and "book" in lower:
             task_name = "Put the Candle on the Book"
             score = 57.2
-        elif "glasses" in lower:
+        elif "glasses" in lower and "book" in lower:
             task_name = "Put the Glasses Case on the Book"
             score = 53.8
-        elif "cup" in lower:
+        elif "cup" in lower and "book" in lower:
             task_name = "Put the Cup on the Book"
             score = 72.7
         elif "rotate" in lower:
             task_name = "Rotate Task"
-            score = 75.0
+            score = 76.0
         elif "bracelet" in lower:
             task_name = "Bracelet Task"
             score = 70.0
@@ -35,14 +35,8 @@ def calculate_quality_score(trajectory):
             task_name = "Diamond Task"
             score = 65.0
         elif "ring" in lower:
-            task_name = "Ring Box Task"
+            task_name = "Ring Task"
             score = 55.0
-
-        # Nếu vẫn unknown thì dùng hash để tạo biến thiên
-        if task_name == "Unknown Task":
-            import hashlib
-            h = int(hashlib.md5(original.encode()).hexdigest(), 16) % 40
-            score = 50 + h
 
         return round(score, 1), [task_name], {
             "is_transaction": True,
