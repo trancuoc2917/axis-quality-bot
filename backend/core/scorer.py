@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from typing import Any
+from typing import Any, List, Dict
 
 def is_transaction_hash(text: str) -> bool:
     text = text.strip()
@@ -38,7 +38,9 @@ def calculate_quality_score(trajectory: Any, mode: str = "full"):
             task_name = "Ring Task"
             score = 55.0
 
-        return round(score, 1), [task_name], {
+        return round(score, 1), [
+            {"message": task_name, "type": "task"}
+        ], {
             "is_transaction": True,
             "hash": original[:12] + "...",
             "task": task_name,
@@ -55,4 +57,6 @@ def calculate_quality_score(trajectory: Any, mode: str = "full"):
     length = len(trajectory) if isinstance(trajectory, (list, dict)) else 1
     score = 88 if length >= 5 else 62
 
-    return round(score, 1), [f"{length} bước"], {"checked_at": now_vn}
+    return round(score, 1), [
+        {"message": f"{length} bước", "type": "info"}
+    ], {"checked_at": now_vn}
