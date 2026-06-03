@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import sys
 import os
 
@@ -12,7 +13,7 @@ import sqlite3
 import json
 from datetime import datetime
 
-app = FastAPI(title="Axis Data Quality API", version="3.0")
+app = FastAPI(title="Axis Data Quality Bot", version="3.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,8 +23,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount frontend (phải để trước các route API)
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+
 def get_db():
-    # Sử dụng đường dẫn tuyệt đối trong container
     db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "axis_quality.db")
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
