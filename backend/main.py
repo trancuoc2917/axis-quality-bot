@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse
 import sys
 import os
 
+# Thêm đường dẫn import
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.core.scorer import calculate_quality_score
@@ -22,15 +23,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve giao diện chính
+# ====================== SERVE FRONTEND ======================
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
-    with open("frontend/index.html", "r", encoding="utf-8") as f:
-        return f.read()
+    index_path = os.path.join(BASE_DIR, "frontend", "index.html")
+    try:
+        with open(index_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return HTMLResponse("<h1>Frontend chưa được deploy đúng. Kiểm tra lại thư mục frontend/</h1>", status_code=500)
 
-# Các API khác giữ nguyên
+# ====================== API ======================
 def get_db():
-    db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "axis_quality.db")
+    db_path = os.path.join(BASE_DIR, "axis_quality.db")
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
