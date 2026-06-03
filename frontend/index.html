@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Axis Data Quality Bot</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #0f172a; color: #e2e8f0; }
+        .container { max-width: 900px; margin: auto; }
+        h1 { text-align: center; color: #60a5fa; }
+        textarea { width: 100%; height: 250px; padding: 12px; background: #1e2937; color: white; border: 1px solid #475569; border-radius: 8px; font-family: monospace; }
+        button { padding: 14px 32px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        button:hover { background: #2563eb; }
+        #result { margin-top: 20px; padding: 15px; background: #1e2937; border-radius: 8px; white-space: pre-wrap; min-height: 100px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Axis Data Quality Bot v3.2</h1>
+        <p style="text-align:center; color:#94a3b8;">Kiểm tra chất lượng dữ liệu Axis Robotics</p>
+        
+        <textarea id="trajectory" placeholder="Dán dữ liệu trajectory / log / JSON vào đây..."></textarea><br><br>
+        
+        <button onclick="checkQuality()">📊 Kiểm tra Chất Lượng</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function checkQuality() {
+            const data = document.getElementById('trajectory').value.trim();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = "⏳ Đang xử lý...";
+
+            if (!data) {
+                resultDiv.innerHTML = "❌ Vui lòng nhập dữ liệu!";
+                return;
+            }
+
+            try {
+                const response = await fetch('/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        trajectory: data,
+                        filename: "web_input.txt",
+                        mode: "full"
+                    })
+                });
+                
+                const result = await response.json();
+                resultDiv.innerHTML = `<h3>✅ Kết quả:</h3><pre>${JSON.stringify(result, null, 2)}</pre>`;
+            } catch (err) {
+                resultDiv.innerHTML = `❌ Lỗi: ${err.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
