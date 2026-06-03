@@ -8,43 +8,47 @@ def is_transaction_hash(text: str) -> bool:
 def calculate_quality_score(trajectory: Any, mode: str = "full"):
     original = str(trajectory).strip()
 
-    # === TRANSACTION HASH MODE ===
+    # === TRANSACTION HASH MODE - TÍNH ĐỘNG ===
     if is_transaction_hash(original):
-        # Phân tích dựa trên độ dài + pattern (toàn diện hơn)
-        score = 65.0
+        # Tính điểm dựa trên độ phức tạp của hash
+        hash_str = original[2:]  # bỏ 0x
+        length_score = len(hash_str) / 64 * 30          # tối đa 30 điểm
+        hex_score = sum(1 for c in hash_str if c in "abcdef") / 64 * 25   # tối đa 25 điểm
+        variety_score = len(set(hash_str)) / 16 * 20     # tối đa 20 điểm
+
+        base_score = 45 + length_score + hex_score + variety_score
+
+        # Bonus theo một số pattern task Axis
+        lower = hash_str.lower()
+        bonus = 0
+        task_name = "Generic Task"
+
+        if any(x in lower for x in ["candle", "book", "put"]):
+            bonus += 12
+            task_name = "Put the Candle on the Book"
+        elif any(x in lower for x in ["pick", "place", "move", "robot"]):
+            bonus += 18
+            task_name = "Pick & Place / Robot Task"
+        elif any(x in lower for x in ["sign", "verify"]):
+            bonus += 8
+            task_name = "Sign / Verify Task"
+
+        final_score = round(min(95, max(40, base_score + bonus)), 1)
+
         issues = [
-            {"message": "Đã nhận diện Transaction Hash", "type": "tx_detected"},
-            {"message": "Đang phân tích chất lượng dựa trên dữ liệu có sẵn", "type": "analyzing"}
+            {"message": f"Đã nhận diện Transaction Hash - Task: {task_name}", "type": "tx_detected"},
+            {"message": f"Điểm số được tính động dựa trên hash (độ phức tạp + pattern)", "type": "dynamic_score"}
         ]
 
-        # Phân tích sâu hơn dựa trên hash (càng phức tạp càng điểm cao)
-        complexity = len(original) + sum(1 for c in original if c in "abcdef")
-        if complexity > 80:
-            score += 12
-        elif complexity > 70:
-            score += 8
-
-        # Giả lập một số pattern task Axis
-        lower = original.lower()
-        if "candle" in lower or "book" in lower or "put" in lower:
-            score = 57.2
-            issues.append({"message": "Task: Put the Candle on the Book", "type": "task_match"})
-        elif "pick" in lower or "place" in lower:
-            score = 68.5
-            issues.append({"message": "Task: Pick & Place", "type": "task_match"})
-        else:
-            issues.append({"message": "Task: Unknown / Generic", "type": "task_unknown"})
-
-        score = round(min(92, max(40, score)), 1)
-
-        return score, issues, {
+        return final_score, issues, {
             "is_transaction": True,
             "hash": original,
-            "task": "Axis Robotics Task",
+            "task": task_name,
+            "complexity": round(base_score, 1),
             "mode": mode
         }
 
-    # === JSON MODE (giữ nguyên) ===
+    # === JSON MODE ===
     if isinstance(trajectory, str):
         try:
             trajectory = json.loads(trajectory)
