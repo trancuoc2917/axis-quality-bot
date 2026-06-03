@@ -6,19 +6,16 @@
     <title>Axis Data Quality Bot</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #0f172a; color: #e2e8f0; }
-        .container { max-width: 800px; margin: auto; }
-        h1 { text-align: center; color: #60a5fa; margin-bottom: 5px; }
-        p { text-align: center; color: #94a3b8; }
-        textarea { width: 100%; height: 160px; padding: 14px; background: #1e2937; color: white; border: 1px solid #475569; border-radius: 12px; font-family: monospace; }
-        button { padding: 14px 28px; font-size: 17px; border: none; border-radius: 10px; cursor: pointer; margin: 10px 5px; }
-        .btn-check { background: #3b82f6; color: white; }
-        .btn-check:hover { background: #2563eb; }
-        #result { margin-top: 20px; padding: 20px; background: #1e2937; border-radius: 12px; text-align: center; }
-        .score-big { font-size: 52px; font-weight: bold; margin: 10px 0; }
-        .task-name { font-size: 18px; color: #60a5fa; margin: 8px 0; }
-        .time { color: #94a3b8; font-size: 14px; }
-        .good { color: #4ade80; }
-        .bad { color: #f87171; }
+        .container { max-width: 800px; margin: auto; text-align: center; }
+        h1 { color: #60a5fa; margin-bottom: 8px; }
+        p { color: #94a3b8; }
+        textarea { width: 100%; height: 140px; padding: 15px; background: #1e2937; color: white; border-radius: 12px; border: 1px solid #475569; font-family: monospace; }
+        button { padding: 16px 32px; font-size: 18px; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; margin: 15px 0; }
+        button:hover { background: #2563eb; }
+        #result { margin-top: 25px; padding: 25px; background: #1e2937; border-radius: 16px; }
+        .score { font-size: 72px; font-weight: bold; margin: 10px 0; }
+        .task { font-size: 20px; color: #60a5fa; margin: 8px 0; }
+        .time { color: #94a3b8; font-size: 15px; }
     </style>
 </head>
 <body>
@@ -26,9 +23,9 @@
         <h1>🔍 Axis Data Quality Bot</h1>
         <p>Kiểm tra chất lượng dữ liệu Axis Robotics</p>
 
-        <textarea id="input" placeholder="Dán Transaction Hash (0x...) hoặc JSON vào đây..."></textarea><br>
+        <textarea id="input" placeholder="Dán Transaction Hash hoặc JSON vào đây..."></textarea>
         
-        <button class="btn-check" onclick="checkQuality()">📊 Kiểm Tra Ngay</button>
+        <button onclick="checkQuality()">📊 Kiểm Tra Ngay</button>
 
         <div id="result"></div>
     </div>
@@ -40,32 +37,31 @@
             resultDiv.innerHTML = "⏳ Đang kiểm tra...";
 
             if (!input) {
-                resultDiv.innerHTML = "❌ Vui lòng dán dữ liệu vào!";
+                resultDiv.innerHTML = "❌ Vui lòng dán dữ liệu!";
                 return;
             }
 
             try {
-                const response = await fetch('/check', {
+                const res = await fetch('/check', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ trajectory: input, filename: "manual", mode: "full" })
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({trajectory: input, filename: "input", mode: "full"})
                 });
-
-                const data = await response.json();
+                const data = await res.json();
+                
                 const score = data.score;
                 const task = data.metrics?.task || "Unknown Task";
                 const time = data.metrics?.checked_at || "—";
 
-                const color = score >= 70 ? "good" : (score >= 55 ? "" : "bad");
-
                 resultDiv.innerHTML = `
-                    <div class="score-big ${color}">${score}</div>
-                    <div class="task-name">${task}</div>
+                    <div class="score" style="color: ${score >= 70 ? '#4ade80' : score >= 55 ? '#fbbf24' : '#f87171'}">
+                        ${score}
+                    </div>
+                    <div class="task">${task}</div>
                     <div class="time">Kiểm tra lúc: ${time}</div>
-                    ${score >= 70 ? "🎉 Tốt" : score >= 55 ? "👍 Trung bình" : "⚠️ Cần cải thiện"}
                 `;
-            } catch (err) {
-                resultDiv.innerHTML = `❌ Lỗi: ${err.message}`;
+            } catch (e) {
+                resultDiv.innerHTML = "❌ Lỗi kết nối";
             }
         }
     </script>
