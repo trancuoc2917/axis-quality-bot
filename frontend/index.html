@@ -3,88 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Axis Data Quality Bot v3.2</title>
+    <title>Axis Data Quality Bot</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #0f172a; color: #e2e8f0; }
-        .container { max-width: 1000px; margin: auto; }
-        h1 { text-align: center; color: #60a5fa; }
-        button { padding: 12px 24px; margin: 5px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
-        .btn-primary { background: #3b82f6; color: white; }
-        .btn-secondary { background: #64748b; color: white; }
-        textarea { width: 100%; height: 200px; padding: 12px; background: #1e2937; color: white; border-radius: 8px; }
-        #result, #history { margin-top: 20px; padding: 15px; background: #1e2937; border-radius: 8px; white-space: pre-wrap; }
-        .stats { display: flex; gap: 20px; justify-content: center; margin: 20px 0; }
-        .stat-card { background: #1e2937; padding: 15px; border-radius: 8px; text-align: center; min-width: 180px; }
+        .container { max-width: 800px; margin: auto; }
+        h1 { text-align: center; color: #60a5fa; margin-bottom: 5px; }
+        p { text-align: center; color: #94a3b8; }
+        textarea { width: 100%; height: 160px; padding: 14px; background: #1e2937; color: white; border: 1px solid #475569; border-radius: 12px; font-family: monospace; }
+        button { padding: 14px 28px; font-size: 17px; border: none; border-radius: 10px; cursor: pointer; margin: 10px 5px; }
+        .btn-check { background: #3b82f6; color: white; }
+        .btn-check:hover { background: #2563eb; }
+        #result { margin-top: 20px; padding: 20px; background: #1e2937; border-radius: 12px; text-align: center; }
+        .score-big { font-size: 52px; font-weight: bold; margin: 10px 0; }
+        .task-name { font-size: 18px; color: #60a5fa; margin: 8px 0; }
+        .time { color: #94a3b8; font-size: 14px; }
+        .good { color: #4ade80; }
+        .bad { color: #f87171; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔍 Axis Data Quality Bot v3.2</h1>
-        <p style="text-align:center; color:#94a3b8;">Kiểm tra chất lượng dữ liệu Axis Robotics</p>
+        <h1>🔍 Axis Data Quality Bot</h1>
+        <p>Kiểm tra chất lượng dữ liệu Axis Robotics</p>
 
-        <textarea id="input" placeholder="Dán JSON hoặc Transaction Hash (0x...) vào đây..."></textarea><br><br>
+        <textarea id="input" placeholder="Dán Transaction Hash (0x...) hoặc JSON vào đây..."></textarea><br>
         
-        <button class="btn-primary" onclick="checkQuality()">📊 Kiểm tra Chất Lượng</button>
-        <button class="btn-secondary" onclick="showHistory()">📜 Xem Lịch Sử</button>
+        <button class="btn-check" onclick="checkQuality()">📊 Kiểm Tra Ngay</button>
 
-        <div class="stats" id="stats"></div>
-        
         <div id="result"></div>
-        <div id="history"></div>
     </div>
 
     <script>
         async function checkQuality() {
             const input = document.getElementById('input').value.trim();
             const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = "⏳ Đang xử lý...";
+            resultDiv.innerHTML = "⏳ Đang kiểm tra...";
 
-            if (!input) return resultDiv.innerHTML = "❌ Vui lòng nhập dữ liệu!";
+            if (!input) {
+                resultDiv.innerHTML = "❌ Vui lòng dán dữ liệu vào!";
+                return;
+            }
 
             try {
                 const response = await fetch('/check', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ trajectory: input, filename: "manual_input", mode: "full" })
+                    body: JSON.stringify({ trajectory: input, filename: "manual", mode: "full" })
                 });
-                const result = await response.json();
-                resultDiv.innerHTML = `<h3>✅ Kết quả:</h3><pre>${JSON.stringify(result, null, 2)}</pre>`;
+
+                const data = await response.json();
+                const score = data.score;
+                const task = data.metrics?.task || "Unknown Task";
+                const time = data.metrics?.checked_at || "—";
+
+                const color = score >= 70 ? "good" : (score >= 55 ? "" : "bad");
+
+                resultDiv.innerHTML = `
+                    <div class="score-big ${color}">${score}</div>
+                    <div class="task-name">${task}</div>
+                    <div class="time">Kiểm tra lúc: ${time}</div>
+                    ${score >= 70 ? "🎉 Tốt" : score >= 55 ? "👍 Trung bình" : "⚠️ Cần cải thiện"}
+                `;
             } catch (err) {
                 resultDiv.innerHTML = `❌ Lỗi: ${err.message}`;
-            }
-        }
-
-        async function showHistory() {
-            const historyDiv = document.getElementById('history');
-            const statsDiv = document.getElementById('stats');
-            historyDiv.innerHTML = "⏳ Đang tải lịch sử...";
-
-            try {
-                const res = await fetch('/history?limit=50');
-                const data = await res.json();
-
-                let html = `<h3>📜 Lịch sử kiểm tra (${data.length} lần)</h3>`;
-                let completed = 0, failed = 0, totalScore = 0;
-
-                data.forEach(item => {
-                    const score = parseFloat(item.score);
-                    totalScore += score;
-                    if (score >= 60) completed++;
-                    else failed++;
-
-                    html += `<p><strong>${item.timestamp}</strong> | Task: ${item.filename || 'N/A'} | Score: <b>${score}</b></p>`;
-                });
-
-                const avg = data.length ? (totalScore / data.length).toFixed(1) : 0;
-                statsDiv.innerHTML = `
-                    <div class="stat-card"><h3>${completed}</h3><p>Task Hoàn Thành</p></div>
-                    <div class="stat-card"><h3>${failed}</h3><p>Task Fail</p></div>
-                    <div class="stat-card"><h3>${avg}</h3><p>Điểm Trung Bình</p></div>
-                `;
-
-                historyDiv.innerHTML = html;
-            } catch (e) {
-                historyDiv.innerHTML = "❌ Lỗi tải lịch sử";
             }
         }
     </script>
