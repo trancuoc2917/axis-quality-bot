@@ -1,7 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from core.scorer import calculate_quality_score
-from core.models import TrajectoryCheckRequest, QualityResponse
+import sys
+import os
+
+# Thêm đường dẫn để import core
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from backend.core.scorer import calculate_quality_score
+from backend.core.models import TrajectoryCheckRequest, QualityResponse
 import sqlite3
 import json
 from datetime import datetime
@@ -17,7 +23,9 @@ app.add_middleware(
 )
 
 def get_db():
-    conn = sqlite3.connect("../axis_quality.db")
+    # Sử dụng đường dẫn tuyệt đối trong container
+    db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "axis_quality.db")
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
