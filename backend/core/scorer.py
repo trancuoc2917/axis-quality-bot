@@ -1,10 +1,22 @@
-def calculate_quality_score(trajectory: list, mode: str = "normal"):
-    if not trajectory or not isinstance(trajectory, list):
-        return 0.0, ["Trajectory rỗng hoặc không hợp lệ"], {}
+def calculate_quality_score(trajectory: any, mode: str = "full"):
+    # Chuẩn hóa input
+    if isinstance(trajectory, str):
+        try:
+            import json
+            trajectory = json.loads(trajectory)
+        except:
+            pass
+
+    if not trajectory:
+        return 0.0, [{"message": "Trajectory rỗng hoặc không hợp lệ", "type": "empty"}], {}
 
     score = 100.0
     issues = []
     
+    # Xử lý cả list và dict
+    if isinstance(trajectory, dict):
+        trajectory = [trajectory]  # chuyển dict thành list 1 phần tử
+
     length = len(trajectory)
     has_grasp = any("grasp" in str(step).lower() for step in trajectory)
     has_place = any("place" in str(step).lower() for step in trajectory)
@@ -13,47 +25,37 @@ def calculate_quality_score(trajectory: list, mode: str = "normal"):
     if trajectory and isinstance(trajectory[-1], dict):
         success = bool(trajectory[-1].get("success", False))
 
-    # Penalty theo mode
     penalties = {
         "strict": {"short": 30, "grasp": 35, "place": 35, "fail": 40},
         "normal": {"short": 20, "grasp": 25, "place": 25, "fail": 30},
-        "loose":  {"short": 15, "grasp": 20, "place": 20, "fail": 25}
-    }[mode]
+        "loose":  {"short": 15, "grasp": 20, "place": 20, "fail": 25},
+        "full":   {"short": 20, "grasp": 25, "place": 25, "fail": 30}
+    }.get(mode, {"short": 20, "grasp": 25, "place": 25, "fail": 30})
 
     if length < 5:
         score -= penalties["short"]
-        issues.append(f"Trajectory quá ngắn (chỉ {length} bước)")
+        issues.append({"message": f"Trajectory quá ngắn (chỉ {length} bước)", "type": "short"})
 
     if not has_grasp:
         score -= penalties["grasp"]
-        issues.append("Thiếu hành động Grasp")
+        issues.append({"message": "Thiếu hành động Grasp", "type": "grasp"})
 
     if not has_place:
         score -= penalties["place"]
-        issues.append("Thiếu hành động Place")
+        issues.append({"message": "Thiếu hành động Place", "type": "place"})
 
     if not success:
         score -= penalties["fail"]
-        issues.append("Bước cuối không thành công (success = False)")
+        issues.append({"message": "Bước cuối không thành công (success = False)", "type": "fail"})
 
     score = max(0, min(100, round(score, 1)))
-
-    # Weighted score
-    weighted = (
-        (30 if has_grasp else 0) * 0.3 +
-        (30 if has_place else 0) * 0.3 +
-        min(length * 2, 20) * 0.2 +
-        (20 if success else 0) * 0.2
-    )
-
-    final_score = round(score * 0.6 + weighted * 0.4, 1)
 
     metrics = {
         "length": length,
         "has_grasp": has_grasp,
         "has_place": has_place,
         "success": success,
-        "weighted_score": round(weighted, 1)
+        "mode": mode
     }
 
-    return final_score, issues, metrics
+    return score, issues, metrics
