@@ -1,10 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, HTMLResponse
 import sys
 import os
 
-# Thêm đường dẫn để import core
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.core.scorer import calculate_quality_score
@@ -23,9 +22,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount frontend (phải để trước các route API)
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+# Serve giao diện chính
+@app.get("/", response_class=HTMLResponse)
+async def serve_frontend():
+    with open("frontend/index.html", "r", encoding="utf-8") as f:
+        return f.read()
 
+# Các API khác giữ nguyên
 def get_db():
     db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "axis_quality.db")
     conn = sqlite3.connect(db_path)
@@ -61,7 +64,6 @@ async def get_history(limit: int = 20):
     conn.close()
     return [dict(row) for row in rows]
 
-# Tạo database khi khởi động
 @app.on_event("startup")
 async def startup_event():
     conn = get_db()
