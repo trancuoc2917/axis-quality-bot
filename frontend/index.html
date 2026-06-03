@@ -3,81 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Axis Data Quality Bot</title>
+    <title>Axis Data Quality Bot v3.2</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #0f172a; color: #e2e8f0; }
-        .container { max-width: 900px; margin: auto; }
+        .container { max-width: 1000px; margin: auto; }
         h1 { text-align: center; color: #60a5fa; }
-        textarea { width: 100%; height: 250px; padding: 12px; background: #1e2937; color: white; border: 1px solid #475569; border-radius: 8px; font-family: monospace; }
-        button { padding: 14px 32px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 10px; }
-        button:hover { background: #2563eb; }
-        #result { margin-top: 20px; padding: 15px; background: #1e2937; border-radius: 8px; white-space: pre-wrap; min-height: 100px; }
+        button { padding: 12px 24px; margin: 5px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-secondary { background: #64748b; color: white; }
+        textarea { width: 100%; height: 200px; padding: 12px; background: #1e2937; color: white; border-radius: 8px; }
+        #result, #history { margin-top: 20px; padding: 15px; background: #1e2937; border-radius: 8px; white-space: pre-wrap; }
+        .stats { display: flex; gap: 20px; justify-content: center; margin: 20px 0; }
+        .stat-card { background: #1e2937; padding: 15px; border-radius: 8px; text-align: center; min-width: 180px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🔍 Axis Data Quality Bot v3.2</h1>
         <p style="text-align:center; color:#94a3b8;">Kiểm tra chất lượng dữ liệu Axis Robotics</p>
+
+        <textarea id="input" placeholder="Dán JSON hoặc Transaction Hash (0x...) vào đây..."></textarea><br><br>
         
-        <textarea id="trajectory" placeholder="Dán dữ liệu trajectory / log / JSON vào đây..."></textarea><br><br>
-        
-        <button onclick="checkQuality()">📊 Kiểm tra Chất Lượng</button>
+        <button class="btn-primary" onclick="checkQuality()">📊 Kiểm tra Chất Lượng</button>
+        <button class="btn-secondary" onclick="showHistory()">📜 Xem Lịch Sử</button>
+
+        <div class="stats" id="stats"></div>
         
         <div id="result"></div>
+        <div id="history"></div>
     </div>
 
-        <script>
+    <script>
         async function checkQuality() {
-            const input = document.getElementById('trajectory').value.trim();
+            const input = document.getElementById('input').value.trim();
             const resultDiv = document.getElementById('result');
             resultDiv.innerHTML = "⏳ Đang xử lý...";
 
-            if (!input) {
-                resultDiv.innerHTML = "❌ Vui lòng nhập dữ liệu!";
-                return;
-            }
-
-            let payload;
-
-            // Nếu là Transaction Hash
-            if (input.startsWith("0x") && (input.length === 66 || input.length === 64)) {
-                payload = {
-                    trajectory: input,
-                    filename: "tx_hash_input",
-                    mode: "full"
-                };
-            } 
-            // Nếu là JSON
-            else {
-                try {
-                    const parsed = JSON.parse(input);
-                    payload = {
-                        trajectory: parsed,
-                        filename: "json_input",
-                        mode: "full"
-                    };
-                } catch (e) {
-                    resultDiv.innerHTML = "❌ Dữ liệu phải là JSON hợp lệ hoặc Transaction Hash (bắt đầu bằng 0x)!";
-                    return;
-                }
-            }
+            if (!input) return resultDiv.innerHTML = "❌ Vui lòng nhập dữ liệu!";
 
             try {
                 const response = await fetch('/check', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ trajectory: input, filename: "manual_input", mode: "full" })
                 });
-                
-                if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.detail?.[0]?.msg || "Lỗi server");
-                }
-                
                 const result = await response.json();
                 resultDiv.innerHTML = `<h3>✅ Kết quả:</h3><pre>${JSON.stringify(result, null, 2)}</pre>`;
             } catch (err) {
                 resultDiv.innerHTML = `❌ Lỗi: ${err.message}`;
+            }
+        }
+
+        async function showHistory() {
+            const historyDiv = document.getElementById('history');
+            const statsDiv = document.getElementById('stats');
+            historyDiv.innerHTML = "⏳ Đang tải lịch sử...";
+
+            try {
+                const res = await fetch('/history?limit=50');
+                const data = await res.json();
+
+                let html = `<h3>📜 Lịch sử kiểm tra (${data.length} lần)</h3>`;
+                let completed = 0, failed = 0, totalScore = 0;
+
+                data.forEach(item => {
+                    const score = parseFloat(item.score);
+                    totalScore += score;
+                    if (score >= 60) completed++;
+                    else failed++;
+
+                    html += `<p><strong>${item.timestamp}</strong> | Task: ${item.filename || 'N/A'} | Score: <b>${score}</b></p>`;
+                });
+
+                const avg = data.length ? (totalScore / data.length).toFixed(1) : 0;
+                statsDiv.innerHTML = `
+                    <div class="stat-card"><h3>${completed}</h3><p>Task Hoàn Thành</p></div>
+                    <div class="stat-card"><h3>${failed}</h3><p>Task Fail</p></div>
+                    <div class="stat-card"><h3>${avg}</h3><p>Điểm Trung Bình</p></div>
+                `;
+
+                historyDiv.innerHTML = html;
+            } catch (e) {
+                historyDiv.innerHTML = "❌ Lỗi tải lịch sử";
             }
         }
     </script>
