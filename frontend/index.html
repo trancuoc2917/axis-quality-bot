@@ -7,14 +7,12 @@
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #0f172a; color: #e2e8f0; }
         .container { max-width: 800px; margin: auto; text-align: center; }
-        h1 { color: #60a5fa; margin-bottom: 8px; }
-        p { color: #94a3b8; }
-        textarea { width: 100%; height: 140px; padding: 15px; background: #1e2937; color: white; border-radius: 12px; border: 1px solid #475569; font-family: monospace; }
-        button { padding: 16px 32px; font-size: 18px; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; margin: 15px 0; }
-        button:hover { background: #2563eb; }
-        #result { margin-top: 25px; padding: 25px; background: #1e2937; border-radius: 16px; }
-        .score { font-size: 72px; font-weight: bold; margin: 10px 0; }
-        .task { font-size: 20px; color: #60a5fa; margin: 8px 0; }
+        h1 { color: #60a5fa; margin-bottom: 5px; }
+        textarea { width: 100%; height: 130px; padding: 15px; background: #1e2937; color: white; border-radius: 12px; border: 1px solid #475569; }
+        button { padding: 16px 40px; font-size: 18px; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; margin: 15px 0; }
+        #result { margin-top: 25px; padding: 30px; background: #1e2937; border-radius: 16px; }
+        .score { font-size: 78px; font-weight: bold; margin: 10px 0; }
+        .task { font-size: 22px; color: #a5b4fc; margin: 10px 0; }
         .time { color: #94a3b8; font-size: 15px; }
     </style>
 </head>
@@ -23,7 +21,7 @@
         <h1>🔍 Axis Data Quality Bot</h1>
         <p>Kiểm tra chất lượng dữ liệu Axis Robotics</p>
 
-        <textarea id="input" placeholder="Dán Transaction Hash hoặc JSON vào đây..."></textarea>
+        <textarea id="input" placeholder="Dán Transaction Hash (0x...) hoặc JSON vào đây..."></textarea>
         
         <button onclick="checkQuality()">📊 Kiểm Tra Ngay</button>
 
@@ -36,16 +34,13 @@
             const resultDiv = document.getElementById('result');
             resultDiv.innerHTML = "⏳ Đang kiểm tra...";
 
-            if (!input) {
-                resultDiv.innerHTML = "❌ Vui lòng dán dữ liệu!";
-                return;
-            }
+            if (!input) return resultDiv.innerHTML = "❌ Vui lòng dán dữ liệu!";
 
             try {
                 const res = await fetch('/check', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({trajectory: input, filename: "input", mode: "full"})
+                    body: JSON.stringify({trajectory: input})
                 });
                 const data = await res.json();
                 
@@ -53,15 +48,15 @@
                 const task = data.metrics?.task || "Unknown Task";
                 const time = data.metrics?.checked_at || "—";
 
+                let color = score >= 70 ? "#4ade80" : score >= 55 ? "#fbbf24" : "#f87171";
+
                 resultDiv.innerHTML = `
-                    <div class="score" style="color: ${score >= 70 ? '#4ade80' : score >= 55 ? '#fbbf24' : '#f87171'}">
-                        ${score}
-                    </div>
+                    <div class="score" style="color:${color}">${score}</div>
                     <div class="task">${task}</div>
                     <div class="time">Kiểm tra lúc: ${time}</div>
                 `;
             } catch (e) {
-                resultDiv.innerHTML = "❌ Lỗi kết nối";
+                resultDiv.innerHTML = "❌ Lỗi kết nối server";
             }
         }
     </script>
