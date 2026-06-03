@@ -2,54 +2,50 @@ import json
 import hashlib
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from typing import Any, List, Dict
 
 def is_transaction_hash(text: str) -> bool:
     text = text.strip()
     return text.startswith("0x") and len(text) in (66, 64)
 
-def calculate_quality_score(trajectory: Any, mode: str = "full"):
+def calculate_quality_score(trajectory):
     original = str(trajectory).strip()
     now_vn = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).strftime("%d/%m/%Y %H:%M")
 
     if is_transaction_hash(original):
         lower = original.lower()
         task_name = "Unknown Task"
-        base_score = 60.0
+        score = 60.0
 
-        # Logic nhận diện task mạnh
-        if "candle" in lower and "book" in lower:
+        # Mapping chi tiết hơn
+        if any(k in lower for k in ["candle", "book"]):
             task_name = "Put the Candle on the Book"
-            base_score = 57.2
-        elif "glasses" in lower and "book" in lower:
+            score = 57.2
+        elif any(k in lower for k in ["glasses", "book"]):
             task_name = "Put the Glasses Case on the Book"
-            base_score = 53.8
-        elif "glasses" in lower and "candle" in lower:
+            score = 53.8
+        elif any(k in lower for k in ["glasses", "candle"]):
             task_name = "Put the Glasses Case beside the Candle"
-            base_score = 59.9
-        elif "cup" in lower and "book" in lower:
+            score = 59.9
+        elif any(k in lower for k in ["cup", "book"]):
             task_name = "Put the Cup on the Book"
-            base_score = 72.7
-        elif "rotate" in lower and "cup" in lower:
-            task_name = "Rotate the Cup"
-            base_score = 77.9
-        elif "rotate" in lower and "glasses" in lower:
-            task_name = "Rotate the Glasses Case"
-            base_score = 72.2
-        elif "bracelet" in lower and "plate" in lower:
-            task_name = "Put the Bracelet on the Plate"
-            base_score = 73.1
-        elif "diamond" in lower and "plate" in lower:
-            task_name = "Put the Diamond on the Plate"
-            base_score = 69.6
-        elif "ring" in lower and "box" in lower:
-            task_name = "Put the Ring Box on the Plate"
-            base_score = 53.8
+            score = 72.7
+        elif "rotate" in lower:
+            task_name = "Rotate Task"
+            score = 76.0
+        elif "bracelet" in lower:
+            task_name = "Bracelet Task"
+            score = 70.0
+        elif "diamond" in lower:
+            task_name = "Diamond Task"
+            score = 65.0
+        elif "ring" in lower:
+            task_name = "Ring Task"
+            score = 55.0
 
-        # Dùng hashlib tạo biến thiên score nhỏ
-        hash_obj = hashlib.md5(original.encode())
-        variation = int(hash_obj.hexdigest(), 16) % 9 - 4   # dao động ±4 điểm
-        final_score = round(base_score + variation, 1)
+        # Biến thiên score bằng hashlib
+        hash_int = int(hashlib.md5(original.encode()).hexdigest(), 16)
+        variation = (hash_int % 13) - 6
+        final_score = round(max(40, min(85, score + variation)), 1)
 
         return final_score, [{"message": task_name}], {
             "is_transaction": True,
