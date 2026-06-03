@@ -28,12 +28,20 @@
 
     <script>
         async function checkQuality() {
-            const data = document.getElementById('trajectory').value.trim();
+            const input = document.getElementById('trajectory').value.trim();
             const resultDiv = document.getElementById('result');
             resultDiv.innerHTML = "⏳ Đang xử lý...";
 
-            if (!data) {
+            if (!input) {
                 resultDiv.innerHTML = "❌ Vui lòng nhập dữ liệu!";
+                return;
+            }
+
+            let trajectory;
+            try {
+                trajectory = JSON.parse(input);
+            } catch (e) {
+                resultDiv.innerHTML = "❌ Dữ liệu phải là JSON hợp lệ!";
                 return;
             }
 
@@ -42,11 +50,16 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        trajectory: data,
+                        trajectory: trajectory,
                         filename: "web_input.txt",
                         mode: "full"
                     })
                 });
+                
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.detail?.[0]?.msg || "Lỗi server");
+                }
                 
                 const result = await response.json();
                 resultDiv.innerHTML = `<h3>✅ Kết quả:</h3><pre>${JSON.stringify(result, null, 2)}</pre>`;
